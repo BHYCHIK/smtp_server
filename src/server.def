@@ -1,0 +1,57 @@
+autogen definitions fsm;
+
+method = case;
+type   = reentrant;
+cookie = "const char *command";
+
+cookie = "void *state";
+
+prefix = server_fsm;
+
+
+state  = opened, from, recipient, content;
+event = helo, ehlo, rset, timeout, quit, mail, vrfy, rcpt, data, data_terminate, error;
+
+transition =
+{ tst  = init; tev = helo; next = opened; },
+{ tst  = init; tev = ehlo; next = opened; },
+{ tst  = init; tev = rset; next = opened; },
+{ tst  = init; tev = mail; next = invalid; },
+{ tst  = init; tev = vrfy; next = invalid; },
+{ tst  = init; tev = rcpt; next = invalid; },
+{ tst  = init; tev = data; next = invalid; },
+{ tst  = init; tev = data_terminate; next = invalid; },
+{ tst  = init; tev = error; next = init; },
+{ tst  = opened; tev = helo; next = opened; },
+{ tst  = opened; tev = ehlo; next = opened; },
+{ tst  = opened; tev = rset; next = opened; },
+{ tst  = opened; tev = vrfy; next = opened; },
+{ tst  = opened; tev = mail; next = from; },
+{ tst  = opened; tev = rcpt; next = invalid; },
+{ tst  = opened; tev = data; next = invalid; },
+{ tst  = opened; tev = data_terminate; next = invalid; },
+{ tst  = opened; tev = error; next = opened; },
+{ tst  = from; tev = helo; next = opened; },
+{ tst  = from; tev = ehlo; next = opened; },
+{ tst  = from; tev = rset; next = opened; },
+{ tst  = from; tev = vrfy; next = from; },
+{ tst  = from; tev = mail; next = from; },
+{ tst  = from; tev = rcpt; next = recipient; },
+{ tst  = from; tev = data; next = invalid; },
+{ tst  = from; tev = data_terminate; next = invalid; },
+{ tst  = from; tev = error; next = opened; },
+{ tst  = recipient; tev = helo; next = opened; },
+{ tst  = recipient; tev = ehlo; next = opened; },
+{ tst  = recipient; tev = rset; next = opened; },
+{ tst  = recipient; tev = rcpt; next = recipient; },
+{ tst  = recipient; tev = vrfy; next = recipient; },
+{ tst  = recipient; tev = mail; next = from; },
+{ tst  = recipient; tev = data; next = content; },
+{ tst  = recipient; tev = data_terminate; next = invalid; },
+{ tst  = recipient; tev = error; next = recipient; },
+{ tst  = content; tev = data_terminate; next = opened; },
+{ tst  = content; tev = mail; next = from; },
+{ tst  = content; tev = data; next = content; },
+{ tst  = content; tev = error; next = opened; },
+{ tst  = "*"; tev = timeout; next = done; },
+{ tst  = "*"; tev = quit; next = done; };
