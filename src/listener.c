@@ -7,6 +7,8 @@
 #include <sys/poll.h>
 #include <assert.h>
 #include <stdio.h>
+#include <unistd.h>
+#include "worker.h"
 
 /** Returns true on success, or false if there was an error */
 static int set_block_mode(int fd, int blocking)
@@ -20,10 +22,6 @@ static int set_block_mode(int fd, int blocking)
 }
 
 int is_run = 1;
-
-int run_worker(int parent_socket, int child_socket) {
-    printf("CONNECTION ACCEPTED\n");
-}
 
 void server(int port) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -83,8 +81,21 @@ void server(int port) {
             struct sockaddr_in incoming_addr;
             socklen_t socklen;
             int child_socket = accept(sock, (struct sockaddr *)&incoming_addr, &socklen);
-            run_worker(sock, child_socket);
-            write(child_socket, "HELLOWORLD\n", sizeof("HELLOWORLD\n"));
+            if (!set_block_mode(child_socket, 0)) {
+                close(sock);
+                perror("Unable to make blocking socket");
+                exit(EXIT_FAILURE);
+            }
+            if (child_socket < 0) {
+                close(sock);
+                perror("Acception fail");
+            }
+            if (!run_worker(sock, child_socket)) {
+                close(child_socket);
+                close(sock);
+                perror("worker run failed");
+                exit(EXIT_FAILURE);
+            }
         }
     }
     close(sock);
