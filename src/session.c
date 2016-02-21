@@ -12,6 +12,10 @@ struct user_session *create_user_session(int sock) {
     session->outcome_buffer_size = 0;
     session->income_buffer[0] = '\0';
     session->outcome_buffer[0] = '\0';
+    session->in_progress = 1;
+    session->state = SERVER_FSM_ST_INIT;
+    session->timedout = 0;
+    session->reading_data = 0;
     return session;
 }
 

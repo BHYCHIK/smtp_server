@@ -4,7 +4,7 @@ method = case;
 type   = reentrant;
 cookie = "const char *command";
 
-cookie = "void *state";
+cookie = "void *session";
 
 prefix = server_fsm;
 

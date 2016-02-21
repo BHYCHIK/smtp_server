@@ -21,7 +21,7 @@ static void worker_loop(struct user_session *session) {
     fds[0].fd = session->sock;
     fds[0].events = POLLIN | POLLOUT;
 
-    while(1) {
+    while(session->in_progress || session->outcome_buffer_size) {
         rc = poll(fds, 1, 30000);
         if (rc < 0) {
             perror("poll failed");
@@ -30,13 +30,14 @@ static void worker_loop(struct user_session *session) {
 
         if (rc == 0) {
             perror("Timeout");
-            return;
+            session->timedout = 1;
+            do_smtp(session);
+            continue;
         }
 
         if (fds[0].revents & POLLIN) {
             while (1) {
                 int received = recv(session->sock, session->income_buffer + session->income_buffer_size, sizeof(session->income_buffer) - session->income_buffer_size - 1, 0);
-                printf("received=%d\n", received);
                 if (received > 0) {
                     session->income_buffer_size += received;
                     if (session->income_buffer_size == sizeof(session->income_buffer) - 1) {
@@ -45,8 +46,9 @@ static void worker_loop(struct user_session *session) {
                     }
                     session->income_buffer[session->income_buffer_size] = '\0';
                 } else if (received == 0) {
+                    session->in_progress = 0;
                     perror("Client has gone");
-                    return;
+                    break;
                 } else if (errno == EWOULDBLOCK) {
                     printf("Wouldblock\n");
                     break;
@@ -66,7 +68,8 @@ static void worker_loop(struct user_session *session) {
                     total_sended += sended;
                 } else if (sended == 0) {
                     perror("Client has gone");
-                    return;
+                    session->in_progress = 0;
+                    break;
                 } else if (errno == EWOULDBLOCK) {
                     break;
                 }
