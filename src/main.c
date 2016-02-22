@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "cannot read config\n");
         exit(EXIT_FAILURE);
     }
+
     server(&cfg);
     return 0;
 }

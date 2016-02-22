@@ -13,6 +13,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include "worker.h"
+#include "logger.h"
 
 /** Returns true on success, or false if there was an error */
 static int set_block_mode(int fd, int blocking)
@@ -116,6 +117,8 @@ void server(config_t *cfg) {
     }
 
     drop_priv(cfg);
+    prepare_logger(cfg, sock);
+    send_to_log("HELLO WORLD!\n");
 
     struct pollfd fds[1];
     fds[0].fd = sock;
