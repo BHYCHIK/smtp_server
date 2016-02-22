@@ -12,8 +12,6 @@
 #include "session.h"
 #include "smtp.h"
 
-#define SMTP_WELCOME "220 iremen.ru ESMTP\r\n"
-
 static void worker_loop(struct user_session *session) {
     int rc;
 
@@ -53,17 +51,15 @@ static void worker_loop(struct user_session *session) {
                     printf("Wouldblock\n");
                     break;
                 }
-                perror("FIN");
             }
         }
 
-        //printf("do_smtp\n");
         do_smtp(session);
 
         if (fds[0].revents & POLLOUT && session->outcome_buffer_size) {
             int total_sended = 0;
-            while (1) {
-                int sended = send(session->sock, session->outcome_buffer + total_sended, sizeof(session->outcome_buffer) - total_sended - 1, 0);
+            while (total_sended < session->outcome_buffer_size) {
+                int sended = send(session->sock, session->outcome_buffer + total_sended, session->outcome_buffer_size, 0);
                 if (sended > 0) {
                     total_sended += sended;
                 } else if (sended == 0) {
@@ -93,7 +89,6 @@ int run_worker(int parent_socket, int child_socket) {
 
     printf("CONNECTION ACCEPTED\n");
     struct user_session *session = create_user_session(child_socket);
-    send(child_socket, SMTP_WELCOME, sizeof(SMTP_WELCOME) - 1, 0);
     worker_loop(session);
     destroy_session(session);
     exit(EXIT_SUCCESS);

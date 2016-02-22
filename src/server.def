@@ -15,7 +15,7 @@ event = helo, ehlo, rset, timeout, quit, mail, vrfy, rcpt, data, data_terminate,
 transition =
 { tst  = init; tev = helo; next = opened; },
 { tst  = init; tev = ehlo; next = opened; },
-{ tst  = init; tev = rset; next = opened; },
+{ tst  = init; tev = rset; next = init; },
 { tst  = init; tev = mail; next = invalid; },
 { tst  = init; tev = vrfy; next = invalid; },
 { tst  = init; tev = rcpt; next = invalid; },

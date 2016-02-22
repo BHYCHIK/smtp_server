@@ -5,6 +5,13 @@
 #include "session.h"
 #include "server-fsm.h"
 
+#define SMTP_WELCOME "220 iremen.ru ESMTP\r\n"
+#define SMTP_EHLO_REPLY "250-mx.iremen.ru ready to serve\r\n250 SIZE 73400320\r\n"
+#define SMTP_OK_REPLY "250 OK\r\n"
+#define SMTP_UNKNOWN_COMMAND_REPLY "500 Unknown command\r\n"
+#define SMTP_DATA_REPLY "354 Enter mail, end with \".\" on a line by itself\r\n"
+
+
 pcre *mail_from_regex = NULL;
 pcre *rcpt_to_regex = NULL;
 pcre *quit_regex = NULL;
@@ -97,16 +104,64 @@ int smtp_timeout(struct user_session *session) {
 }
 
 int smtp_helo(struct user_session *session, const char *cmd) {
-    printf("HELLO HANDLE: %s", cmd);
+    append_to_output(session, SMTP_EHLO_REPLY, sizeof(SMTP_EHLO_REPLY) - 1);
+    printf("HELLO HANDLE: %s\n", cmd);
     return 0;
 }
 
 int smtp_ehlo(struct user_session *session, const char *cmd) {
-    printf("EHLO HANDLE: %s", cmd);
+    append_to_output(session, SMTP_EHLO_REPLY, sizeof(SMTP_EHLO_REPLY) - 1);
+    printf("EHLO HANDLE: %s\n", cmd);
+    return 0;
+}
+
+int smtp_mail_from(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
+    printf("MAIL FROM HANDLE: %s\n", cmd);
+    return 0;
+}
+
+int smtp_rcpt_to(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
+    printf("RCPT TO HANDLE: %s\n", cmd);
+    return 0;
+}
+
+int smtp_rset(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
+    printf("RSET HANDLE: %s\n", cmd);
+    return 0;
+}
+
+int smtp_unknown_command(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_UNKNOWN_COMMAND_REPLY, sizeof(SMTP_UNKNOWN_COMMAND_REPLY) - 1);
+    printf("Unknown command: %s\n", cmd);
+    return 0;
+}
+
+int smtp_data_start(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_DATA_REPLY, sizeof(SMTP_DATA_REPLY) - 1);
+    printf("START DATA\n");
+    return 0;
+}
+
+int smtp_data_cont(struct user_session *session, const char *cmd) {
+    printf("WRITING: %s\r\n", cmd);
+    return 0;
+}
+
+int smtp_data_end(struct user_session *session, const char *cmd) {
+    append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
+    printf("DATA FINISHED\n");
     return 0;
 }
 
 int do_smtp(struct user_session *session) {
+    if (!session->welcomed) {
+        session->welcomed = 1;
+        append_to_output(session, SMTP_WELCOME, sizeof(SMTP_WELCOME) - 1);
+    }
+
     char *line = NULL;
     while ((line = get_line_from_session(session))) {
         te_server_fsm_event cmd = get_cmd(session, line);

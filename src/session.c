@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "session.h"
 #include <stdio.h>
 
@@ -16,12 +17,20 @@ struct user_session *create_user_session(int sock) {
     session->state = SERVER_FSM_ST_INIT;
     session->timedout = 0;
     session->reading_data = 0;
+    session->welcomed = 0;
     return session;
 }
 
 void destroy_session(struct user_session *session) {
     close(session->sock);
     free(session);
+}
+
+void append_to_output(struct user_session *session, char *data, int data_size) {
+    assert(session->outcome_buffer_size + data_size <= sizeof(session->outcome_buffer));
+    memcpy(session->outcome_buffer + session->outcome_buffer_size, data, data_size);
+    session->outcome_buffer_size += data_size;
+    session->outcome_buffer[session->outcome_buffer_size] = '\0';
 }
 
 char *get_line_from_session(struct user_session *session) {

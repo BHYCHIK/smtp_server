@@ -13,9 +13,11 @@ struct user_session {
     te_server_fsm_state state;
     int timedout;
     int reading_data;
+    int welcomed;
 };
 
 struct user_session *create_user_session(int sock);
 void destroy_session(struct user_session *session);
 char *get_line_from_session(struct user_session *session);
+void append_to_output(struct user_session *session, char *data, int data_size);
 #endif
