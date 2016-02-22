@@ -13,8 +13,24 @@
 #include <pwd.h>
 #include <grp.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include "worker.h"
 #include "logger.h"
+
+static pid_t logger_pid = 0;
+int workers_num = 0;
+
+static void chld_handler(int signum) {
+    int stat;
+    pid_t pd = 1;
+    while (pd > 0) {
+        pd = waitpid(-1, &stat, WNOHANG);
+        if ( (pd > 0 ) && (pd != logger_pid)) --workers_num;
+    }
+
+}
 
 /** Returns true on success, or false if there was an error */
 static int set_block_mode(int fd, int blocking)
@@ -69,6 +85,13 @@ static void drop_priv(config_t *cfg) {
 }
 
 void server(config_t *cfg) {
+    struct sigaction act;
+    memset (&act, '\0', sizeof(act));
+    act.sa_handler = &chld_handler;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &act, NULL);
+
     int port = 2525;
     if (!config_lookup_int(cfg, "port", &port)) port = 2525;
 
@@ -118,7 +141,7 @@ void server(config_t *cfg) {
     }
 
     drop_priv(cfg);
-    prepare_logger(cfg, sock);
+    logger_pid = prepare_logger(cfg, sock);
 
     struct pollfd fds[1];
     fds[0].fd = sock;
@@ -126,13 +149,15 @@ void server(config_t *cfg) {
 
     while(is_run) {
         rc = poll(fds, 1, -1);
-        if (rc < 0) {
+        if ( (rc < 0) && (errno != EINTR)) {
             char log_line[10240];
             snprintf(log_line, sizeof(log_line), "poll failed: %s", strerror(errno));
             send_to_log(log_line);
             close(sock);
             exit(EXIT_FAILURE);
         }
+
+        if ( (rc < 0) && (errno == EINTR)) continue;
 
         assert(rc > 0);
 
@@ -149,12 +174,18 @@ void server(config_t *cfg) {
                 send_to_log("Unable to make blocking child socket");
                 exit(EXIT_FAILURE);
             }
+
+
+
             if (!run_worker(sock, child_socket, cfg, &incoming_addr)) {
                 close(child_socket);
                 close(sock);
                 send_to_log("worker run failed");
                 exit(EXIT_FAILURE);
             }
+
+            ++workers_num;
+
         }
     }
     close(sock);
