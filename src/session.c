@@ -23,7 +23,9 @@ struct user_session *create_user_session(int sock, config_t *cfg) {
     session->ehlo = NULL;
     session->from = NULL;
     session->recipients = NULL;
-    session->data = mmap(0, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
+    if (!(session->data = mmap(0, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0))) {
+        perror("Cannot mmap");
+    }
     session->data_size = 0;
     session->cfg = cfg;
     return session;
@@ -31,8 +33,9 @@ struct user_session *create_user_session(int sock, config_t *cfg) {
 
 int append_data(struct user_session *session, const char *data, int data_size) {
     if (session->data_size + data_size + 2 > DATA_SIZE) return 0;
-    memcpy(session->data + data_size, data, data_size);
-    memcpy(session->data + data_size, "\r\n", 2);
+    printf("APPENDING data: %s\n", data);
+    memcpy(session->data + session->data_size, data, data_size);
+    memcpy(session->data + session->data_size + data_size, "\r\n", 2);
     session->data_size += data_size + 2;
     return 1;
 }

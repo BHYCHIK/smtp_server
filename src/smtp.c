@@ -185,6 +185,7 @@ int smtp_data_start(struct user_session *session, const char *cmd) {
 
 int smtp_data_cont(struct user_session *session, const char *cmd) {
     int rc = 0;
+    printf("WRITING CMD: %s\n", cmd);
     if (strcmp(cmd, "..")) rc = append_data(session, cmd, strlen(cmd));
     else rc = append_data(session, ".", 1);
     if (!rc) {
@@ -196,11 +197,7 @@ int smtp_data_cont(struct user_session *session, const char *cmd) {
 }
 
 int smtp_data_end(struct user_session *session, const char *cmd) {
-    struct recipients_list* list = session->recipients;
-    while (list) {
-        deliver(session, list->recipient);
-        list = list->next;
-    }
+    deliver(session);
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
     printf("DATA FINISHED\n");
     return 0;
