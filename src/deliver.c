@@ -59,7 +59,7 @@ static int make_permament(const char *mailbox, const char *fname) {
     char *name = strrchr(fname, '/') + 1;
     char perm_path[1024];
     snprintf(perm_path, sizeof(perm_path), "%s/new/%s", mailbox, name);
-    if (!rename(fname, perm_path)) {
+    if (rename(fname, perm_path) < 0) {
         perror("CANNOT RENAME");
     }
     return 0;

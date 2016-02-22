@@ -76,7 +76,7 @@ static void worker_loop(struct user_session *session) {
     }
 }
 
-int run_worker(int parent_socket, int child_socket, config_t *cfg) {
+int run_worker(int parent_socket, int child_socket, config_t *cfg, struct sockaddr_in *incoming_addr) {
     int child_pid = fork();
     if (child_pid < 0) {
         return 0;
@@ -88,7 +88,7 @@ int run_worker(int parent_socket, int child_socket, config_t *cfg) {
     close(parent_socket);
 
     printf("CONNECTION ACCEPTED\n");
-    struct user_session *session = create_user_session(child_socket, cfg);
+    struct user_session *session = create_user_session(child_socket, cfg, incoming_addr);
     worker_loop(session);
     destroy_session(session);
     exit(EXIT_SUCCESS);

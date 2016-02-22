@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <pcre.h>
 #include <string.h>
+#include <firedns.h>
+#include <netdb.h>
 #include "deliver.h"
 #include "session.h"
 #include "server-fsm.h"
@@ -14,6 +16,7 @@
 #define SMTP_QUIT_REPLY "221 mx.iremen.ru closing connection\r\n"
 #define SMTP_VRFY_REPLY "550 User unknown\r\n"
 #define SMTP_TOO_BIG_REPLY "550 Too big mail\r\n"
+#define SMTP_REVERSE_DNS_FAIL_REPLY "550 Reverse dns check failed\r\n"
 
 
 pcre *mail_from_regex = NULL;
@@ -134,6 +137,28 @@ int smtp_verify(struct user_session *session, const char *cmd) {
     return 0;
 }
 
+static int check_reverse_dns(struct user_session *session) {
+    int need_check = 0;
+    if (!config_lookup_int(session->cfg, "CheckReverseDns", &need_check)) need_check = 0;
+    if (!need_check) return 1;
+
+    const char *domain = strrchr(session->from, '@') + 1;
+    char *resolved_name = strdup(firedns_resolvename4(&session->addr->sin_addr));
+
+    struct hostent *hst = gethostbyname(domain);
+    if (!hst) {
+        printf("Bad domain name\n");
+        return 0;
+    }
+    char *resolved_name2 = strdup(firedns_resolvename4((struct in_addr *)hst->h_addr_list[0]));
+
+    printf("TESTING '%s' '%s'\n", resolved_name2, resolved_name);
+    int rc = !strcasecmp(resolved_name, resolved_name2);
+    free(resolved_name);
+    free(resolved_name2);
+    return rc;
+}
+
 int smtp_mail_from(struct user_session *session, const char *cmd) {
     free_recipients_list(session->recipients);
     if (session->from) free(session->from);
@@ -144,7 +169,12 @@ int smtp_mail_from(struct user_session *session, const char *cmd) {
     } else if (vec[6] == -1) {
         session->from = strndup(cmd + vec[4], vec[5] - vec[4]);
     }
-    printf("FROM IS :\"%s\"\n", session->from);
+    if (!check_reverse_dns(session)) {
+        printf("Reverse dns is not ok\n");
+        append_to_output(session, SMTP_REVERSE_DNS_FAIL_REPLY, sizeof(SMTP_REVERSE_DNS_FAIL_REPLY) - 1);
+        session->in_progress = 0;
+        return 0;
+    }
 
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
     return 0;

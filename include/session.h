@@ -13,6 +13,7 @@ struct recipients_list {
 
 struct user_session {
     int sock;
+    struct sockaddr_in *addr;
     char income_buffer[1 * 1024 * 1024];
     char outcome_buffer[100 * 1024];
     unsigned int income_buffer_size;
@@ -30,7 +31,7 @@ struct user_session {
     config_t *cfg;
 };
 
-struct user_session *create_user_session(int sock, config_t *cfg);
+struct user_session *create_user_session(int sock, config_t *cfg, struct sockaddr_in *incoming_addr);
 void destroy_session(struct user_session *session);
 char *get_line_from_session(struct user_session *session);
 void append_to_output(struct user_session *session, char *data, int data_size);

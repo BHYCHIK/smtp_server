@@ -1,5 +1,5 @@
 code: fsm-gen
-	gcc -g -Werror -Wall -Iinclude src/worker.c src/listener.c src/session.c src/smtp.c src/main.c src/deliver.c fsm.o -lpcre -lconfig
+	gcc -g -Werror -Wall -Iinclude src/worker.c src/listener.c src/session.c src/smtp.c src/main.c src/deliver.c fsm.o -lpcre -lconfig -lfiredns
 
 fsm-gen:
 	autogen src/server.def

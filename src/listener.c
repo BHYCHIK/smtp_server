@@ -107,7 +107,7 @@ void server(config_t *cfg) {
                 perror("Unable to make blocking child socket");
                 exit(EXIT_FAILURE);
             }
-            if (!run_worker(sock, child_socket, cfg)) {
+            if (!run_worker(sock, child_socket, cfg, &incoming_addr)) {
                 close(child_socket);
                 close(sock);
                 perror("worker run failed");

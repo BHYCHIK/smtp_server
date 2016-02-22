@@ -8,9 +8,10 @@
 #include <sys/mman.h>
 #include "session.h"
 
-struct user_session *create_user_session(int sock, config_t *cfg) {
+struct user_session *create_user_session(int sock, config_t *cfg, struct sockaddr_in *incoming_addr) {
     struct user_session *session = malloc(sizeof(struct user_session));
     session->sock = sock;
+    session->addr = incoming_addr;
     session->income_buffer_size = 0;
     session->outcome_buffer_size = 0;
     session->income_buffer[0] = '\0';
