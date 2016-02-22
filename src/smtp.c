@@ -10,6 +10,7 @@
 #define SMTP_OK_REPLY "250 OK\r\n"
 #define SMTP_UNKNOWN_COMMAND_REPLY "500 Unknown command\r\n"
 #define SMTP_DATA_REPLY "354 Enter mail, end with \".\" on a line by itself\r\n"
+#define SMTP_QUIT_REPLY "221 mx.iremen.ru closing connection\r\n"
 
 
 pcre *mail_from_regex = NULL;
@@ -26,7 +27,7 @@ __attribute__((constructor)) void regex_compile(){
     const char *pcreErrorStr = NULL;
     int pcreErrorOffset = 0;
     mail_from_regex = pcre_compile("(^MAIL FROM:.*?\\<(\\w+@[\\w\\.]+)\\>\\s*|^MAIL FROM:\\s*(\\w+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
-    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<(\\w+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*(\\w+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*(\\w+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     quit_regex = pcre_compile("^QUIT\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     ehlo_regex = pcre_compile("^EHLO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     helo_regex = pcre_compile("^HELO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
@@ -94,6 +95,7 @@ static te_server_fsm_event get_cmd(struct user_session *session, const char *lin
 }
 
 int smtp_quit(struct user_session *session) {
+    append_to_output(session, SMTP_QUIT_REPLY, sizeof(SMTP_QUIT_REPLY) - 1);
     session->in_progress = 0;
     return 0;
 }
