@@ -263,6 +263,11 @@ int do_smtp(struct user_session *session) {
         append_to_output(session, SMTP_WELCOME, sizeof(SMTP_WELCOME) - 1);
     }
 
+    if (session->timedout) {
+        te_server_fsm_event cmd = get_cmd(session, "timeout");
+        session->state = server_fsm_step(session->state, cmd, "timeout", session);
+    }
+
     char *line = NULL;
     while ((line = get_line_from_session(session))) {
         te_server_fsm_event cmd = get_cmd(session, line);

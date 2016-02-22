@@ -12,10 +12,20 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+
 
 #include "session.h"
 #include "smtp.h"
 #include "logger.h"
+
+static double get_milis_time() {
+    struct timeval  tv;
+    gettimeofday(&tv, NULL);
+
+    double time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    return time_in_mill;
+}
 
 static void worker_loop(struct user_session *session) {
     int rc;
@@ -24,14 +34,20 @@ static void worker_loop(struct user_session *session) {
     fds[0].fd = session->sock;
     fds[0].events = POLLIN | POLLOUT;
 
+    int timeout = 30000;
+    if (!config_lookup_int(session->cfg, "Timeout", &timeout)) timeout = 30000;
+
+    double start = get_milis_time();
+
     while(session->in_progress || session->outcome_buffer_size) {
-        rc = poll(fds, 1, 30000);
+        rc = poll(fds, 1, get_milis_time() - start);
         if (rc < 0) {
             send_to_log("poll failed");
             return;
         }
+        double stop = get_milis_time();
 
-        if (rc == 0) {
+        if ( (stop - start > (double)timeout) && (!session->timedout) ) {
             send_to_log("Timeout");
             session->timedout = 1;
             do_smtp(session);
@@ -39,6 +55,7 @@ static void worker_loop(struct user_session *session) {
         }
 
         if (fds[0].revents & POLLIN) {
+            start = get_milis_time();
             while (1) {
                 int received = recv(session->sock, session->income_buffer + session->income_buffer_size, sizeof(session->income_buffer) - session->income_buffer_size - 1, 0);
                 if (received > 0) {
@@ -58,7 +75,7 @@ static void worker_loop(struct user_session *session) {
             }
         }
 
-        do_smtp(session);
+        if (!session->timedout) do_smtp(session);
 
         if (fds[0].revents & POLLOUT && session->outcome_buffer_size) {
             int total_sended = 0;
