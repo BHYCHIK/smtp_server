@@ -175,16 +175,19 @@ void server(config_t *cfg) {
                 exit(EXIT_FAILURE);
             }
 
-
-
-            if (!run_worker(sock, child_socket, cfg, &incoming_addr)) {
+            int max_workers = 2525;
+            if (!config_lookup_int(cfg, "MaxWorkers", &max_workers)) max_workers = 2525;
+            if (workers_num >= max_workers) {
+                close(child_socket);
+                send_to_log("Dropping connection. Too many workers");
+            } else if (!run_worker(sock, child_socket, cfg, &incoming_addr)) {
                 close(child_socket);
                 close(sock);
                 send_to_log("worker run failed");
                 exit(EXIT_FAILURE);
+            } else {
+                ++workers_num;
             }
-
-            ++workers_num;
 
         }
     }
