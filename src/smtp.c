@@ -43,6 +43,18 @@ __attribute__((constructor)) void regex_compile(){
     dot_regex = pcre_compile("^\\.$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
 }
 
+__attribute__((destructor)) void regex_free() {
+    pcre_free(mail_from_regex);
+    pcre_free(rcpt_to_regex);
+    pcre_free(quit_regex);
+    pcre_free(ehlo_regex);
+    pcre_free(helo_regex);
+    pcre_free(vrfy_regex);
+    pcre_free(rset_regex);
+    pcre_free(data_regex);
+    pcre_free(dot_regex);
+}
+
 static te_server_fsm_event get_cmd(struct user_session *session, const char *line) {
     int vec[30];
     memset(vec, 0, 30*sizeof(int));

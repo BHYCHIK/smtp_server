@@ -28,7 +28,7 @@ static int set_block_mode(int fd, int blocking)
     return (fcntl(fd, F_SETFL, flags) == 0) ? 1 : 0;
 }
 
-int is_run = 1;
+extern volatile int is_run;
 
 void server(config_t *cfg) {
     int port = 2525;
