@@ -14,10 +14,16 @@
 /** Returns true on success, or false if there was an error */
 static int set_block_mode(int fd, int blocking)
 {
-    if (fd < 0) return 0;
+    if (fd < 0) {
+        perror("Bad sock number");
+        return 0;
+    }
 
     int flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) return 0;
+    if (flags < 0) {
+        perror ("flags < 0");
+        return 0;
+    }
     flags = blocking ? (flags&~O_NONBLOCK) : (flags|O_NONBLOCK);
     return (fcntl(fd, F_SETFL, flags) == 0) ? 1 : 0;
 }
@@ -29,6 +35,10 @@ void server(config_t *cfg) {
     if (!config_lookup_int(cfg, "port", &port)) port = 2525;
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
 
     int on = 1;
 
@@ -85,16 +95,17 @@ void server(config_t *cfg) {
 
         if (fds[0].revents & POLLIN) {
             struct sockaddr_in incoming_addr;
-            socklen_t socklen;
+            socklen_t socklen = sizeof(incoming_addr);
+            printf("sock = %d\n", sock);
             int child_socket = accept(sock, (struct sockaddr *)&incoming_addr, &socklen);
-            if (!set_block_mode(child_socket, 0)) {
-                close(sock);
-                perror("Unable to make blocking socket");
-                exit(EXIT_FAILURE);
-            }
             if (child_socket < 0) {
                 close(sock);
                 perror("Acception fail");
+            }
+            if (!set_block_mode(child_socket, 0)) {
+                close(sock);
+                perror("Unable to make blocking child socket");
+                exit(EXIT_FAILURE);
             }
             if (!run_worker(sock, child_socket, cfg)) {
                 close(child_socket);

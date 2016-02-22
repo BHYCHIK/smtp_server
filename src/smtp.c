@@ -198,9 +198,8 @@ int smtp_data_cont(struct user_session *session, const char *cmd) {
 int smtp_data_end(struct user_session *session, const char *cmd) {
     struct recipients_list* list = session->recipients;
     while (list) {
-        printf("DELIVER TO: %s\n", list->recipient);
-        list = list->next;
         deliver(session, list->recipient);
+        list = list->next;
     }
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
     printf("DATA FINISHED\n");
