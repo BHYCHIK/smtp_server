@@ -9,6 +9,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 #include "worker.h"
 
 /** Returns true on success, or false if there was an error */
@@ -29,6 +32,39 @@ static int set_block_mode(int fd, int blocking)
 }
 
 extern volatile int is_run;
+
+static void drop_priv(config_t *cfg) {
+    int user_id = 0;
+    int group_id = 0;
+
+    const char *user;
+    const char *group;
+
+    if (!config_lookup_string(cfg, "User", &user)) {
+        fprintf(stderr, "No User in config\n");
+        exit(EXIT_FAILURE);
+    }
+    if (!config_lookup_string(cfg, "Group", &group)) {
+        fprintf(stderr, "No Group in config\n");
+        exit(EXIT_FAILURE);
+    }
+
+    struct passwd *user_data = getpwnam(user);
+    user_id = user_data->pw_uid;
+
+    struct group *group_data = getgrnam(group);
+    group_id = group_data->gr_gid;
+
+    if (setgid(group_id) == -1) {
+        fprintf(stderr, "Cannot switch group\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (setuid(user_id) == -1) {
+        fprintf(stderr, "Cannot switch user\n");
+        exit(EXIT_FAILURE);
+    }
+}
 
 void server(config_t *cfg) {
     int port = 2525;
@@ -78,6 +114,8 @@ void server(config_t *cfg) {
         perror("listen() failed");
         exit(EXIT_FAILURE);
     }
+
+    drop_priv(cfg);
 
     struct pollfd fds[1];
     fds[0].fd = sock;
