@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #include "session.h"
 
-struct user_session *create_user_session(int sock) {
+struct user_session *create_user_session(int sock, config_t *cfg) {
     struct user_session *session = malloc(sizeof(struct user_session));
     session->sock = sock;
     session->income_buffer_size = 0;
@@ -25,6 +25,7 @@ struct user_session *create_user_session(int sock) {
     session->recipients = NULL;
     session->data = mmap(0, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
     session->data_size = 0;
+    session->cfg = cfg;
     return session;
 }
 

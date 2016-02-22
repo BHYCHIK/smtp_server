@@ -30,7 +30,7 @@ struct user_session {
     config_t *cfg;
 };
 
-struct user_session *create_user_session(int sock);
+struct user_session *create_user_session(int sock, config_t *cfg);
 void destroy_session(struct user_session *session);
 char *get_line_from_session(struct user_session *session);
 void append_to_output(struct user_session *session, char *data, int data_size);

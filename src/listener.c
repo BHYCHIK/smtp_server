@@ -27,7 +27,6 @@ int is_run = 1;
 void server(config_t *cfg) {
     int port = 2525;
     if (!config_lookup_int(cfg, "port", &port)) port = 2525;
-    printf("PORT: %d\n", port);
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -60,7 +59,9 @@ void server(config_t *cfg) {
         exit(EXIT_FAILURE);
     }
 
-    rc = listen(sock, 32);
+    int backlog = 32;
+    if (!config_lookup_int(cfg, "backlog", &backlog)) backlog = 32;
+    rc = listen(sock, backlog);
     if (rc < 0)
     {
         close(sock);
@@ -95,7 +96,7 @@ void server(config_t *cfg) {
                 close(sock);
                 perror("Acception fail");
             }
-            if (!run_worker(sock, child_socket)) {
+            if (!run_worker(sock, child_socket, cfg)) {
                 close(child_socket);
                 close(sock);
                 perror("worker run failed");
