@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <pcre.h>
 #include <string.h>
+#include "deliver.h"
 #include "session.h"
 #include "server-fsm.h"
 
@@ -183,7 +184,9 @@ int smtp_data_start(struct user_session *session, const char *cmd) {
 }
 
 int smtp_data_cont(struct user_session *session, const char *cmd) {
-    int rc = append_data(session, cmd, strlen(cmd));
+    int rc = 0;
+    if (strcmp(cmd, "..")) rc = append_data(session, cmd, strlen(cmd));
+    else rc = append_data(session, ".", 1);
     if (!rc) {
         append_to_output(session, SMTP_TOO_BIG_REPLY, sizeof(SMTP_DATA_REPLY) - 1);
         session->in_progress = 0;
@@ -197,6 +200,7 @@ int smtp_data_end(struct user_session *session, const char *cmd) {
     while (list) {
         printf("DELIVER TO: %s\n", list->recipient);
         list = list->next;
+        deliver(session, list->recipient);
     }
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
     printf("DATA FINISHED\n");
