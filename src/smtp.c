@@ -12,6 +12,7 @@
 #define SMTP_DATA_REPLY "354 Enter mail, end with \".\" on a line by itself\r\n"
 #define SMTP_QUIT_REPLY "221 mx.iremen.ru closing connection\r\n"
 #define SMTP_VRFY_REPLY "550 User unknown\r\n"
+#define SMTP_TOO_BIG_REPLY "550 Too big mail\r\n"
 
 
 pcre *mail_from_regex = NULL;
@@ -27,8 +28,8 @@ pcre *vrfy_regex = NULL;
 __attribute__((constructor)) void regex_compile(){
     const char *pcreErrorStr = NULL;
     int pcreErrorOffset = 0;
-    mail_from_regex = pcre_compile("(^MAIL FROM:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^MAIL FROM:\\s*(\\w+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
-    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*(\\w+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    mail_from_regex = pcre_compile("(^MAIL FROM:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^MAIL FROM:\\s*([\\w\\.]+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*([\\w\\.]+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     quit_regex = pcre_compile("^QUIT\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     ehlo_regex = pcre_compile("^EHLO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     helo_regex = pcre_compile("^HELO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
@@ -133,7 +134,7 @@ int smtp_verify(struct user_session *session, const char *cmd) {
 }
 
 int smtp_mail_from(struct user_session *session, const char *cmd) {
-    //DO NOT FORGET TO CLEAR RCPT ALSO
+    free_recipients_list(session->recipients);
     if (session->from) free(session->from);
     int vec[30];
     pcre_exec(mail_from_regex, 0, cmd, strlen(cmd), 0,  0, vec, 30);
@@ -149,8 +150,17 @@ int smtp_mail_from(struct user_session *session, const char *cmd) {
 }
 
 int smtp_rcpt_to(struct user_session *session, const char *cmd) {
+    char *recipient = NULL;
+    int vec[30];
+    pcre_exec(rcpt_to_regex, 0, cmd, strlen(cmd), 0,  0, vec, 30);
+    if (vec[4] == -1) {
+        recipient = strndup(cmd + vec[6], vec[7] - vec[6]);
+    } else if (vec[6] == -1) {
+        recipient = strndup(cmd + vec[4], vec[5] - vec[4]);
+    }
+    printf("RCPT TO:\"%s\"\n", recipient);
+    session->recipients = add_to_recipients(session->recipients, recipient);
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
-    printf("RCPT TO HANDLE: %s\n", cmd);
     return 0;
 }
 
@@ -173,11 +183,21 @@ int smtp_data_start(struct user_session *session, const char *cmd) {
 }
 
 int smtp_data_cont(struct user_session *session, const char *cmd) {
-    printf("WRITING: %s\r\n", cmd);
+    int rc = append_data(session, cmd, strlen(cmd));
+    if (!rc) {
+        append_to_output(session, SMTP_TOO_BIG_REPLY, sizeof(SMTP_DATA_REPLY) - 1);
+        session->in_progress = 0;
+        return 1;
+    }
     return 0;
 }
 
 int smtp_data_end(struct user_session *session, const char *cmd) {
+    struct recipients_list* list = session->recipients;
+    while (list) {
+        printf("DELIVER TO: %s\n", list->recipient);
+        list = list->next;
+    }
     append_to_output(session, SMTP_OK_REPLY, sizeof(SMTP_OK_REPLY) - 1);
     printf("DATA FINISHED\n");
     return 0;

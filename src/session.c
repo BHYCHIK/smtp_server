@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "session.h"
 #include <stdio.h>
+#include <strings.h>
+#include <sys/mman.h>
+#include "session.h"
 
 struct user_session *create_user_session(int sock) {
     struct user_session *session = malloc(sizeof(struct user_session));
@@ -20,12 +22,55 @@ struct user_session *create_user_session(int sock) {
     session->welcomed = 0;
     session->ehlo = NULL;
     session->from = NULL;
+    session->recipients = NULL;
+    session->data = mmap(0, DATA_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, 0, 0);
+    session->data_size = 0;
     return session;
+}
+
+int append_data(struct user_session *session, const char *data, int data_size) {
+    if (session->data_size + data_size + 2 > DATA_SIZE) return 0;
+    memcpy(session->data + data_size, data, data_size);
+    memcpy(session->data + data_size, "\r\n", 2);
+    session->data_size += data_size + 2;
+    return 1;
+}
+
+struct recipients_list *add_to_recipients(struct recipients_list *list, char *recipient) {
+    if (!list) {
+        list = malloc(sizeof(struct recipients_list));
+        list->recipient = recipient;
+        list->next = NULL;
+        return list;
+    }
+    struct recipients_list *tmp = list;
+    while(tmp->next) {
+        if(!strcasecmp(tmp->recipient, recipient)) return list;
+        tmp = tmp->next;
+    }
+    tmp->next = malloc(sizeof(struct recipients_list));
+    tmp = tmp->next;
+    tmp->next = NULL;
+    tmp->recipient = recipient;
+
+    return list;
+}
+
+void free_recipients_list(struct recipients_list *list) {
+    struct recipients_list *tmp = NULL;
+    while(list) {
+        tmp = list;
+        list = list->next;
+        free(tmp->recipient);
+        free(tmp);
+    }
 }
 
 void destroy_session(struct user_session *session) {
     if (session->ehlo) free(session->ehlo);
     if (session->from) free(session->from);
+    munmap(session->data, DATA_SIZE);
+    free_recipients_list(session->recipients);
     close(session->sock);
     free(session);
 }

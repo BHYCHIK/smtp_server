@@ -1,5 +1,6 @@
 #include <sys/types.h>          /* See NOTES */
 #include <sys/socket.h>
+#include <libconfig.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,7 +24,11 @@ static int set_block_mode(int fd, int blocking)
 
 int is_run = 1;
 
-void server(int port) {
+void server(config_t *cfg) {
+    int port = 2525;
+    if (!config_lookup_int(cfg, "port", &port)) port = 2525;
+    printf("PORT: %d\n", port);
+
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     int on = 1;
@@ -100,9 +105,3 @@ void server(int port) {
     }
     close(sock);
 }
-
-int main() {
-    server(2525);
-    return 0;
-}
-
