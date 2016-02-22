@@ -14,6 +14,8 @@ struct user_session {
     int timedout;
     int reading_data;
     int welcomed;
+    char *from;
+    char *ehlo;
 };
 
 struct user_session *create_user_session(int sock);

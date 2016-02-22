@@ -18,10 +18,14 @@ struct user_session *create_user_session(int sock) {
     session->timedout = 0;
     session->reading_data = 0;
     session->welcomed = 0;
+    session->ehlo = NULL;
+    session->from = NULL;
     return session;
 }
 
 void destroy_session(struct user_session *session) {
+    if (session->ehlo) free(session->ehlo);
+    if (session->from) free(session->from);
     close(session->sock);
     free(session);
 }
