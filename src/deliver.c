@@ -55,6 +55,16 @@ static int write_file(struct user_session *session, const char *delivered_to, in
     return 0;
 }
 
+static int make_permament(const char *mailbox, const char *fname) {
+    char *name = strrchr(fname, '/') + 1;
+    char perm_path[1024];
+    snprintf(perm_path, sizeof(perm_path), "%s/new/%s", mailbox, name);
+    if (!rename(fname, perm_path)) {
+        perror("CANNOT RENAME");
+    }
+    return 0;
+}
+
 static int remote_deliver(struct user_session *session) {
     const char *remote_mailbox = NULL;
     if (!config_lookup_string(session->cfg, "RemoteMailbox", &remote_mailbox)) assert(0);
@@ -74,11 +84,24 @@ static int remote_deliver(struct user_session *session) {
     }
     write_file(session,delivered_to, tmp_fd);
     free(delivered_to);
+    make_permament(remote_mailbox, filepath_tmp);
 
     return 0;
 }
 
 static int local_deliver(struct user_session *session, const char *recipient) {
+    const char *local_mailbox = NULL;
+    if (!config_lookup_string(session->cfg, "LocalMailbox", &local_mailbox)) assert(0);
+
+    char filepath_tmp[1024];
+    int tmp_fd = get_fd(local_mailbox, filepath_tmp, sizeof(filepath_tmp));
+
+    char *delivered_to = NULL;
+    asprintf(&delivered_to, "Delivered-To: %s", recipient);
+    write_file(session,delivered_to, tmp_fd);
+    free(delivered_to);
+    make_permament(local_mailbox, filepath_tmp);
+
     return 0;
 }
 
