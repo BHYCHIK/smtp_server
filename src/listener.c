@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+#include <errno.h>
 #include "worker.h"
 #include "logger.h"
 
@@ -118,7 +119,6 @@ void server(config_t *cfg) {
 
     drop_priv(cfg);
     prepare_logger(cfg, sock);
-    send_to_log("HELLO WORLD!\n");
 
     struct pollfd fds[1];
     fds[0].fd = sock;
@@ -127,7 +127,9 @@ void server(config_t *cfg) {
     while(is_run) {
         rc = poll(fds, 1, -1);
         if (rc < 0) {
-            perror("poll failed");
+            char log_line[10240];
+            snprintf(log_line, sizeof(log_line), "poll failed: %s", strerror(errno));
+            send_to_log(log_line);
             close(sock);
             exit(EXIT_FAILURE);
         }
@@ -137,21 +139,20 @@ void server(config_t *cfg) {
         if (fds[0].revents & POLLIN) {
             struct sockaddr_in incoming_addr;
             socklen_t socklen = sizeof(incoming_addr);
-            printf("sock = %d\n", sock);
             int child_socket = accept(sock, (struct sockaddr *)&incoming_addr, &socklen);
             if (child_socket < 0) {
                 close(sock);
-                perror("Acception fail");
+                send_to_log("Acception fail");
             }
             if (!set_block_mode(child_socket, 0)) {
                 close(sock);
-                perror("Unable to make blocking child socket");
+                send_to_log("Unable to make blocking child socket");
                 exit(EXIT_FAILURE);
             }
             if (!run_worker(sock, child_socket, cfg, &incoming_addr)) {
                 close(child_socket);
                 close(sock);
-                perror("worker run failed");
+                send_to_log("worker run failed");
                 exit(EXIT_FAILURE);
             }
         }

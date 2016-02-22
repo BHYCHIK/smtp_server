@@ -34,7 +34,6 @@ struct user_session *create_user_session(int sock, config_t *cfg, struct sockadd
 
 int append_data(struct user_session *session, const char *data, int data_size) {
     if (session->data_size + data_size + 2 > DATA_SIZE) return 0;
-    printf("APPENDING data: %s\n", data);
     memcpy(session->data + session->data_size, data, data_size);
     memcpy(session->data + session->data_size + data_size, "\r\n", 2);
     session->data_size += data_size + 2;
@@ -51,13 +50,11 @@ struct recipients_list *add_to_recipients(struct recipients_list *list, char *re
     struct recipients_list *tmp = list;
     while(tmp->next) {
         if(!strcasecmp(tmp->recipient, recipient)) {
-            printf("ALREADY HAVE: %s\n", recipient);
             return list;
         }
         tmp = tmp->next;
     }
     if(!strcasecmp(tmp->recipient, recipient)) {
-        printf("ALREADY HAVE: %s\n", recipient);
         return list;
     }
     tmp->next = malloc(sizeof(struct recipients_list));

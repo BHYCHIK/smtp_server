@@ -9,8 +9,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "session.h"
 #include "smtp.h"
+#include "logger.h"
 
 static void worker_loop(struct user_session *session) {
     int rc;
@@ -22,12 +27,12 @@ static void worker_loop(struct user_session *session) {
     while(session->in_progress || session->outcome_buffer_size) {
         rc = poll(fds, 1, 30000);
         if (rc < 0) {
-            perror("poll failed");
+            send_to_log("poll failed");
             return;
         }
 
         if (rc == 0) {
-            perror("Timeout");
+            send_to_log("Timeout");
             session->timedout = 1;
             do_smtp(session);
             continue;
@@ -39,16 +44,15 @@ static void worker_loop(struct user_session *session) {
                 if (received > 0) {
                     session->income_buffer_size += received;
                     if (session->income_buffer_size == sizeof(session->income_buffer) - 1) {
-                        perror("Income buffer overflow");
+                        send_to_log("Income buffer overflow");
                         return;
                     }
                     session->income_buffer[session->income_buffer_size] = '\0';
                 } else if (received == 0) {
                     session->in_progress = 0;
-                    perror("Client has gone");
+                    send_to_log("client gone");
                     break;
                 } else if (errno == EWOULDBLOCK) {
-                    printf("Wouldblock\n");
                     break;
                 }
             }
@@ -63,7 +67,9 @@ static void worker_loop(struct user_session *session) {
                 if (sended > 0) {
                     total_sended += sended;
                 } else if (sended == 0) {
-                    perror("Client has gone");
+                    char log_line[10240];
+                    snprintf(log_line, sizeof(log_line), "Client has gone");
+                    send_to_log(log_line);
                     session->in_progress = 0;
                     break;
                 } else if (errno == EWOULDBLOCK) {
@@ -87,7 +93,9 @@ int run_worker(int parent_socket, int child_socket, config_t *cfg, struct sockad
     }
     close(parent_socket);
 
-    printf("CONNECTION ACCEPTED\n");
+    char log_line[10240];
+    snprintf(log_line, sizeof(log_line), "Accepting connection from: %s", inet_ntoa(incoming_addr->sin_addr));
+    send_to_log(log_line);
     struct user_session *session = create_user_session(child_socket, cfg, incoming_addr);
     worker_loop(session);
     destroy_session(session);
