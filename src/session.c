@@ -46,8 +46,15 @@ struct recipients_list *add_to_recipients(struct recipients_list *list, char *re
     }
     struct recipients_list *tmp = list;
     while(tmp->next) {
-        if(!strcasecmp(tmp->recipient, recipient)) return list;
+        if(!strcasecmp(tmp->recipient, recipient)) {
+            printf("ALREADY HAVE: %s\n", recipient);
+            return list;
+        }
         tmp = tmp->next;
+    }
+    if(!strcasecmp(tmp->recipient, recipient)) {
+        printf("ALREADY HAVE: %s\n", recipient);
+        return list;
     }
     tmp->next = malloc(sizeof(struct recipients_list));
     tmp = tmp->next;
