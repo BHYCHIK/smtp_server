@@ -123,6 +123,11 @@ static int remote_deliver(struct user_session *session) {
 static int local_deliver(struct user_session *session, const char *recipient) {
     const char *local_mailbox = NULL;
     if (!config_lookup_string(session->cfg, "LocalMailbox", &local_mailbox)) assert(0);
+    char log_line[10240];
+    if ( (mkdir(local_mailbox, 0755) < 0) && (errno != EEXIST) ) {
+        snprintf(log_line, sizeof(log_line), "cannot create %s folder. %s.", local_mailbox, strerror(errno));
+        send_to_log(log_line);
+    }
 
     char filepath_tmp[1024];
     char user_dir[1024];
