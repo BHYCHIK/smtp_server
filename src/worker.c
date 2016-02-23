@@ -96,11 +96,12 @@ static void worker_loop(struct user_session *session) {
             memmove(session->outcome_buffer, session->outcome_buffer + total_sended, session->outcome_buffer_size - total_sended + 1);
             session->outcome_buffer_size -= total_sended;
         }
+        /*
         if (session->outcome_buffer_size) {
             fds[0].events = POLLIN | POLLOUT;
         } else {
             fds[0].events = POLLIN;
-        }
+        }*/
     }
 }
 
