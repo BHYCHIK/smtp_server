@@ -89,6 +89,7 @@ static int make_permament(const char *mailbox, const char *fname) {
         return 1;
     }
     snprintf(log_line, sizeof(log_line), "Delivery done to file %s", perm_path);
+    send_to_log(log_line);
     return 0;
 }
 

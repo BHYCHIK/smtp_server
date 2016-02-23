@@ -188,6 +188,11 @@ int smtp_mail_from(struct user_session *session, const char *cmd) {
     } else if (vec[6] == -1) {
         session->from = strndup(cmd + vec[4], vec[5] - vec[4]);
     }
+
+    char log_line[10240];
+    snprintf(log_line, sizeof(log_line), "Envelope from: %s", session->from);
+    send_to_log(log_line);
+
     if (!check_reverse_dns(session)) {
         send_to_log("Dns test failed");
         append_to_output(session, SMTP_REVERSE_DNS_FAIL_REPLY, sizeof(SMTP_REVERSE_DNS_FAIL_REPLY) - 1);
