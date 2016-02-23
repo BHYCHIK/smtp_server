@@ -32,15 +32,15 @@ static void worker_loop(struct user_session *session) {
 
     struct pollfd fds[1];
     fds[0].fd = session->sock;
-    fds[0].events = POLLIN | POLLOUT;
 
     int timeout = 30000;
     if (!config_lookup_int(session->cfg, "Timeout", &timeout)) timeout = 30000;
 
     double start = get_milis_time();
 
+    fds[0].events = POLLIN | POLLOUT;
     while(session->in_progress || session->outcome_buffer_size) {
-        rc = poll(fds, 1, get_milis_time() - start);
+        rc = poll(fds, 1, timeout - (get_milis_time() - start));
         if (rc < 0) {
             send_to_log("poll failed");
             return;
@@ -95,6 +95,11 @@ static void worker_loop(struct user_session *session) {
             }
             memmove(session->outcome_buffer, session->outcome_buffer + total_sended, session->outcome_buffer_size - total_sended + 1);
             session->outcome_buffer_size -= total_sended;
+        }
+        if (session->outcome_buffer_size) {
+            fds[0].events = POLLIN | POLLOUT;
+        } else {
+            fds[0].events = POLLIN;
         }
     }
 }

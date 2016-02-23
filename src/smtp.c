@@ -33,8 +33,8 @@ pcre *vrfy_regex = NULL;
 __attribute__((constructor)) void regex_compile(){
     const char *pcreErrorStr = NULL;
     int pcreErrorOffset = 0;
-    mail_from_regex = pcre_compile("(^MAIL FROM:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^MAIL FROM:\\s*([\\w\\.]+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
-    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*([\\w\\.]+@[\\w\\.]+)\\s*)$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    mail_from_regex = pcre_compile("(^MAIL FROM:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^MAIL FROM:\\s*([\\w\\.]+@[\\w\\.]+))[$\\s]+", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
+    rcpt_to_regex = pcre_compile("(^RCPT TO:.*?\\<([\\w\\.]+@[\\w\\.]+)\\>\\s*|^RCPT TO:\\s*([\\w\\.]+@[\\w\\.]+))[$\\s]+", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     quit_regex = pcre_compile("^QUIT\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     ehlo_regex = pcre_compile("^EHLO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
     helo_regex = pcre_compile("^HELO\\s+([^\\s]+)\\s*$", PCRE_CASELESS, &pcreErrorStr, &pcreErrorOffset, NULL);
