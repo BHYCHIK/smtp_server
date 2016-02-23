@@ -105,7 +105,6 @@ static te_server_fsm_event get_cmd(struct user_session *session, const char *lin
     char log_line[10240];
     snprintf(log_line, sizeof(log_line), "Syntax error: %s", line);
     send_to_log(log_line);
-    append_to_output(session, SMTP_EHLO_REPLY, sizeof(SMTP_EHLO_REPLY) - 1);
     return SERVER_FSM_EV_ERROR;
 }
 
